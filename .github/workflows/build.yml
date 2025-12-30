@@ -1,0 +1,43 @@
+name: Build ZenNotes Executables
+on: [push] # Runs every time you push code
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        # This creates 3 separate "workers" to build for each OS
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Executable
+        shell: bash
+        run: |
+          # Dynamically find customtkinter path
+          CTK_PATH=$(python -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))")
+          
+          # Build command (use ; for Windows paths and : for Linux/Mac)
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            pyinstaller --noconsole --onefile --add-data "$CTK_PATH;customtkinter/" notes_app.py
+          else
+            pyinstaller --noconsole --onefile --add-data "$CTK_PATH:customtkinter/" notes_app.py
+          fi
+
+      - name: Upload Finished Software
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZenNotes-${{ matrix.os }}
+          path: dist/
